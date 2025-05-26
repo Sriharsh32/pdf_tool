@@ -16,6 +16,15 @@ document.getElementById('pdfForm').addEventListener('submit', async function(e) 
   formData.append("inputValue", inputValue);
   formData.append("unitSelect", unitSelect);
 
+  // Before formData is sent, set fromUnit and toUnit
+  const unitSelectValue = document.getElementById('unitSelect').value;
+  let fromUnit = '', toUnit = '';
+  if (unitSelectValue) {
+    [fromUnit, toUnit] = unitSelectValue.split('-');
+  }
+  formData.append("fromUnit", fromUnit);
+  formData.append("toUnit", toUnit);
+
   try {
     const response = await fetch('http://127.0.0.1:5000/process', {
       method: 'POST',

@@ -25,11 +25,12 @@ def process_files():
         input_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(input_path)
 
+        base, ext = os.path.splitext(filename)
         if operation == "numbering":
-            output_file = os.path.join(OUTPUT_FOLDER, f"{output_name}.pdf")
+            output_file = os.path.join(OUTPUT_FOLDER, f"{output_name}_{base}.pdf")
             number_dimensions(input_path, output_file)
         elif operation == "tolerance":
-            output_file = os.path.join(OUTPUT_FOLDER, f"{output_name}.xlsx")
+            output_file = os.path.join(OUTPUT_FOLDER, f"{output_name}_{base}.xlsx")
             df = extract_all_tolerances_to_df(input_path)
             df.to_excel(output_file, index=False)
         else:

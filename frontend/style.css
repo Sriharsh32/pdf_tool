@@ -64,8 +64,24 @@ input:focus, select:focus {
   transform: scale(1.05);
 }
 
+/* Style select dropdowns */
 select {
+  background: rgba(255, 255, 255, 0.2); /* semi-transparent white, matches your theme */
+  color: #fff;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  appearance: none;           /* Remove default arrow and style */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: background 0.3s, border-color 0.3s;
   cursor: pointer;
+}
+
+/* On hover and focus, match your button highlight */
+select:hover, select:focus {
+  background: #1f3c88;        /* Your theme's blue */
+  border-color: #FFD700;
+  color: #FFD700;
 }
 
 /* Button */

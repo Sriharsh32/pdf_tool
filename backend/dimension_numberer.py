@@ -2,17 +2,15 @@ import fitz  # PyMuPDF
 import re
 import pandas as pd
 
-def number_dimensions(input_pdf_path, output_pdf_path, excel_output_path):
+def number_dimensions(input_pdf_path, output_pdf_path,):
     doc = fitz.open(input_pdf_path)
 
     # Universal dimension pattern for engineering drawings
     dimension_pattern = re.compile(
-        r'(⌀\s*\d+(?:\.\d+)?|'                  # Diameter
-        r'R\s*\d+(?:\.\d+)?|'                   # Radius
-        r'$\s*\d+(?:\.\d+)?\s*$|'             # Reference dimension
-        r'\d+(?:\.\d+)?\s*°(?:\s*\d+′\s*\d+″)?|'# Angular dimension
-        r'\d+(?:\.\d+)?\s*(mm|in)?\s*$\s*\d+(?:\.\d+)?\s*(mm|in)\s*$|'  # Dual dimensions
-        r'\d+(?:\.\d+)?'                        # Linear
+        r'(⌀\s*\d+(?:\.\d+)?|'         # Diameter
+        r'R\s*\d+(?:\.\d+)?|'          # Radius
+        r'\d+(?:\.\d+)?\s*°|'          # Angle
+        r'\d+(?:\.\d+)?'               # Linear
         r')'
     )
 
