@@ -102,7 +102,7 @@ def number_dimensions(input_pdf_path, output_pdf_path,):
             # Annotate PDF
             page = doc[page_num - 1]
             number_text = str(serial_counter)
-            font_size = 10
+            font_size = 20
             vertical_gap = font_size * 1.2
             char_width = font_size * 0.5
             text_width = len(number_text) * char_width
