@@ -1,17 +1,12 @@
 import fitz  # PyMuPDF
 import re
-import pandas as pd
 
-def number_dimensions(input_pdf_path, output_pdf_path,):
+def number_dimensions(input_pdf_path, output_pdf_path):
     doc = fitz.open(input_pdf_path)
 
-    # Universal dimension pattern for engineering drawings
+    # Regex: match only dimensions (⌀12, R5, 45°, 100), not tolerances (±, +, - after number)
     dimension_pattern = re.compile(
-        r'(⌀\s*\d+(?:\.\d+)?|'         # Diameter
-        r'R\s*\d+(?:\.\d+)?|'          # Radius
-        r'\d+(?:\.\d+)?\s*°|'          # Angle
-        r'\d+(?:\.\d+)?'               # Linear
-        r')'
+        r'(⌀\s*\d+(?:\.\d+)?\b|R\s*\d+(?:\.\d+)?\b|\d+(?:\.\d+)?\s*°|\b\d+(?:\.\d+)?\b)'
     )
 
     all_blocks = []
@@ -24,64 +19,47 @@ def number_dimensions(input_pdf_path, output_pdf_path,):
 
     serial_counter = 1
     data = []
+    annotated_areas = []
 
     for i, (page_num, rect, text) in enumerate(all_blocks):
-        dim_matches = dimension_pattern.findall(text)
-        if not dim_matches:
+        dim_matches = list(dimension_pattern.finditer(text))
+        filtered_dims = []
+        for match in dim_matches:
+            dim = match.group()
+            start, end = match.span()
+            # Get context around the match
+            before = text[max(0, start-2):start]
+            after = text[end:end+2]
+            # Exclude if part of tolerance or fit (e.g., ±, +, -, (, ), etc)
+            if any(sym in after for sym in ['±', '+', '-', '(', ')']) or any(sym in before for sym in ['±', '+', '-', '(', ')']):
+                continue
+            filtered_dims.append(dim)
+        if not filtered_dims:
             continue
 
-        for dim in dim_matches:
-            # Ensure dim is a string and handle it accordingly
-            if isinstance(dim, str):
-                dim = dim.strip()
-            else:
-                continue  # Skip if dim is not a string
-
-            # The rest of your processing logic remains unchanged
+        for dim in filtered_dims:
+            # Extract symbol and value
             if dim.startswith('⌀') or dim.startswith('R'):
                 symbol = dim[0]
-                value = dim[1:].strip()
+                value = re.findall(r'\d+(?:\.\d+)?', dim)
             elif '°' in dim:
                 symbol = '°'
-                value = dim.replace('°', '').strip()
+                value = re.findall(r'\d+(?:\.\d+)?', dim)
             else:
                 symbol = ''
-                value = dim.replace('(', '').replace(')', '').split()[0]
+                value = re.findall(r'\d+(?:\.\d+)?', dim)
+
+            if not value:
+                continue
 
             try:
-                nominal = float(value)
+                nominal = float(value[0])
             except ValueError:
                 continue
 
+            # No tolerance extraction here
             low_tol = up_tol = 0.0
             tolerance_type = "No Tolerance"
-
-            for j, (p2, r2, t2) in enumerate(all_blocks):
-                if j == i or p2 != page_num:
-                    continue
-
-                if r2.intersects(rect + (-50, -30, 250, 50)):
-                    t2 = t2.replace("−", "-")
-
-                    if "±" in t2:
-                        try:
-                            tol_val = float(t2.replace('±', '').strip())
-                            low_tol = -tol_val
-                            up_tol = tol_val
-                            tolerance_type = "Symmetric (±)"
-                            break
-                        except ValueError:
-                            continue
-
-                    parts = re.findall(r'[+-]?\d+(?:\.\d+)?', t2)
-                    if len(parts) == 2:
-                        try:
-                            low_tol = float(parts[0])
-                            up_tol = float(parts[1])
-                            tolerance_type = "Asymmetric (+/-)"
-                            break
-                        except ValueError:
-                            continue
 
             lower_bound = nominal + low_tol
             upper_bound = nominal + up_tol
@@ -99,25 +77,38 @@ def number_dimensions(input_pdf_path, output_pdf_path,):
                 "Rect": rect
             })
 
-            # Annotate PDF
+            # Annotate PDF without overlap
             page = doc[page_num - 1]
             number_text = str(serial_counter)
             font_size = 20
-            vertical_gap = font_size * 1.2
-            char_width = font_size * 0.5
+            vertical_gap = font_size * 1.7  # More gap between numbers
+            char_width = font_size * 0.7    # Slightly wider for safety
             text_width = len(number_text) * char_width
             center_x = rect.x0 + (rect.width / 2) - (text_width / 2)
-            above_y = rect.y0 - vertical_gap
-            insert_point = fitz.Point(center_x, above_y)
-            page.insert_text(
-                insert_point,
-                number_text,
-                fontname="helv",
-                fontsize=font_size,
-                color=(1, 0, 0)
-            )
+
+            max_attempts = 15  # Try more positions
+            for offset_idx in range(max_attempts):
+                offset_y = vertical_gap * (offset_idx + 1)
+                above_y = rect.y0 - offset_y
+                insert_point = fitz.Point(center_x, above_y)
+                # Make annotation area larger for better overlap detection
+                annot_rect = fitz.Rect(
+                    insert_point.x - 4, insert_point.y - 4,
+                    insert_point.x + text_width + 4,
+                    insert_point.y + font_size + 4
+                )
+
+                if not any(annot_rect.intersects(existing) for existing in annotated_areas):
+                    page.insert_text(
+                        insert_point,
+                        number_text,
+                        fontname="helv",
+                        fontsize=font_size,
+                        color=(1, 0, 0)
+                    )
+                    annotated_areas.append(annot_rect)
+                    break
 
             serial_counter += 1
 
     doc.save(output_pdf_path)
-

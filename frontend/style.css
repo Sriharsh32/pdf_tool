@@ -73,7 +73,7 @@ select {
   appearance: none;           /* Remove default arrow and style */
   -webkit-appearance: none;
   -moz-appearance: none;
-  transition: background 0.3s, border-color 0.3s;
+  transition: background-color 0.3s, border-color 0.3s;
   cursor: pointer;
 }
 
