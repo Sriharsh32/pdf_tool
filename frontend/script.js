@@ -39,7 +39,6 @@ document.getElementById('pdfForm').addEventListener('submit', async function(e) 
     const downloadSection = document.getElementById('downloadSection');
     const downloadList = document.getElementById('downloadList');
     downloadList.innerHTML = '';
-
     data.files.forEach(file => {
       const li = document.createElement('li');
       const a = document.createElement('a');
